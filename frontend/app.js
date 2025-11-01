@@ -2,7 +2,6 @@
 let db;
 const STORAGE_KEY = 'libreta_contactos_db_b64';
 
-// Funciones de utilidad para manejo de datos
 function arrayBufferToBase64(buffer) {
   let binary = '';
   const bytes = new Uint8Array(buffer);
@@ -20,14 +19,13 @@ function base64ToUint8Array(base64) {
 }
 
 function escapeHtml(s) { 
-  return String(s || '').replace(/[&<>"']/g, c => 
+  return String(s || '').replace(/[&<>"]|'/g, c => 
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": "&#39;" })[c]
   ); 
 }
 
-// Funciones de gestión de la base de datos
 function saveDbToLocalStorage() {
-  const data = db.export(); // Uint8Array
+  const data = db.export();
   const b64 = arrayBufferToBase64(data);
   localStorage.setItem(STORAGE_KEY, b64);
 }
@@ -41,9 +39,7 @@ function loadDbFromLocalStorage() {
 }
 
 function initializeDatabase(SQLLib) {
-  window.SQL = SQLLib; // para debugging
-  
-  // Intentar cargar desde localStorage
+  window.SQL = SQLLib;
   const loaded = (function() {
     const b64 = localStorage.getItem(STORAGE_KEY);
     if (!b64) return false;
@@ -55,7 +51,6 @@ function initializeDatabase(SQLLib) {
       return false; 
     }
   })();
-
   if (!loaded) {
     db = new SQLLib.Database();
     db.run(`CREATE TABLE IF NOT EXISTS contactos (
@@ -70,20 +65,15 @@ function initializeDatabase(SQLLib) {
     );`);
     saveDbToLocalStorage();
   }
-
   renderContactos();
 }
 
-// Funciones de UI y manejo de contactos
 function renderContactos() {
   if (!db) return;
-  
   const tbody = document.querySelector('#tablaContactos tbody');
   const res = db.exec('SELECT idContacto, nombre, apellido, empresa, cargo, telefono, nota, fechaCreacion FROM contactos ORDER BY fechaCreacion DESC');
-  
   tbody.innerHTML = '';
   if (res.length === 0) return;
-  
   const rows = res[0].values;
   rows.forEach(row => {
     const [id, nombre, apellido, empresa, cargo, telefono, nota, fechaCreacion] = row;
@@ -108,10 +98,8 @@ function renderContactos() {
 function editarContacto(id) {
   const res = db.exec('SELECT idContacto, nombre, apellido, empresa, cargo, telefono, nota FROM contactos WHERE idContacto = ?', [id]);
   if (!res || res.length === 0) return alert('Contacto no encontrado');
-  
   const row = res[0].values[0];
   const [nid, nombre, apellido, empresa, cargo, telefono, nota] = row;
-  
   document.getElementById('idContacto').value = nid;
   document.getElementById('nombre').value = nombre;
   document.getElementById('apellido').value = apellido;
@@ -130,7 +118,6 @@ function eliminarContacto(id) {
 
 function guardarContacto(event) {
   event.preventDefault();
-  
   const id = document.getElementById('idContacto').value;
   const nombre = document.getElementById('nombre').value.trim();
   const apellido = document.getElementById('apellido').value.trim();
@@ -139,12 +126,10 @@ function guardarContacto(event) {
   const telefono = document.getElementById('telefono').value.trim();
   const nota = document.getElementById('nota').value.trim();
   const fechaCreacion = new Date().toLocaleString();
-
   if (!nombre || !apellido) { 
     alert('Nombre y apellido son obligatorios'); 
     return; 
   }
-
   if (id) {
     db.run('UPDATE contactos SET nombre = ?, apellido = ?, empresa = ?, cargo = ?, telefono = ?, nota = ? WHERE idContacto = ?', 
       [nombre, apellido, empresa, cargo, telefono, nota, id]);
@@ -152,7 +137,6 @@ function guardarContacto(event) {
     db.run('INSERT INTO contactos (nombre, apellido, empresa, cargo, telefono, nota, fechaCreacion) VALUES (?, ?, ?, ?, ?, ?, ?)', 
       [nombre, apellido, empresa, cargo, telefono, nota, fechaCreacion]);
   }
-
   saveDbToLocalStorage();
   document.getElementById('contactForm').reset();
   document.getElementById('idContacto').value = '';
@@ -161,7 +145,6 @@ function guardarContacto(event) {
 
 function exportarDB() {
   if (!db) return alert('DB no iniciada');
-  
   const data = db.export();
   const blob = new Blob([data], { type: 'application/octet-stream' });
   const url = URL.createObjectURL(blob);
@@ -177,7 +160,6 @@ function exportarDB() {
 function importarDB(event) {
   const f = event.target.files[0];
   if (!f) return;
-  
   const reader = new FileReader();
   reader.onload = function() {
     const u8 = new Uint8Array(this.result);
@@ -193,20 +175,15 @@ function importarDB(event) {
   reader.readAsArrayBuffer(f);
 }
 
-// Inicialización y eventos
 document.addEventListener('DOMContentLoaded', () => {
-  // Inicializar sql.js
   const locateFile = file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}`;
   initSqlJs({ locateFile })
     .then(initializeDatabase)
     .catch(err => console.error('Error al inicializar sql.js', err));
-
-  // Eventos para la tabla de contactos
   const tbody = document.querySelector('#tablaContactos tbody');
   tbody.addEventListener('click', (ev) => {
     const btn = ev.target.closest('button');
     if (!btn) return;
-    
     const id = btn.dataset.id;
     if (btn.classList.contains('edit')) {
       editarContacto(id);
@@ -214,14 +191,9 @@ document.addEventListener('DOMContentLoaded', () => {
       eliminarContacto(id);
     }
   });
-
-  // Eventos para el formulario
   const form = document.getElementById('contactForm');
   form.addEventListener('submit', guardarContacto);
-
-  // Eventos para exportar/importar
   document.getElementById('btnExport').addEventListener('click', exportarDB);
-  
   const fileInput = document.getElementById('fileInput');
   document.getElementById('btnImport').addEventListener('click', () => fileInput.click());
   fileInput.addEventListener('change', importarDB);
