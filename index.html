@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Libreta de contactos con SQLite (sin backend)</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    <link rel="stylesheet" href="styles.css">
+    <!-- sql.js (WebAssembly). We use the CDN and tell the loader where to find the .wasm file -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1><span class="material-icons">contact_page</span> Gestión de Contactos</h1>
+      </header>
+
+      <div class="controls">
+        <button id="btnExport" class="btn-primary"><span class="material-icons">download</span> Exportar DB</button>
+        <button id="btnImport" class="btn-secondary"><span class="material-icons">upload</span> Importar DB</button>
+        <input id="fileInput" type="file" accept=".db" style="display:none" />
+      </div>
+
+      <form id="contactForm">
+        <input type="hidden" id="idContacto">
+
+        <div class="form-group">
+          <label for="nombre">Nombre:</label>
+          <input type="text" id="nombre" required placeholder="Nombre del contacto">
+        </div>
+
+        <div class="form-group">
+          <label for="apellido">Apellido:</label>
+          <input type="text" id="apellido" required placeholder="Apellido del contacto">
+        </div>
+
+        <div class="form-group">
+          <label for="empresa">Empresa:</label>
+          <input type="text" id="empresa" placeholder="Nombre de la empresa">
+        </div>
+
+        <div class="form-group">
+          <label for="cargo">Cargo:</label>
+          <input type="text" id="cargo" placeholder="Cargo o posición">
+        </div>
+
+        <div class="form-group">
+          <label for="telefono">Teléfono:</label>
+          <input type="text" id="telefono" placeholder="Número de teléfono">
+        </div>
+
+        <div class="form-group">
+          <label for="nota">Nota:</label>
+          <textarea id="nota" placeholder="Información adicional sobre el contacto"></textarea>
+        </div>
+
+        <button type="submit" id="btnSave"><span class="material-icons">save</span> Guardar Contacto</button>
+      </form>
+
+      <div class="table-container">
+        <table id="tablaContactos">
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Apellido</th>
+              <th>Empresa</th>
+              <th>Cargo</th>
+              <th>Teléfono</th>
+              <th>Nota</th>
+              <th>Fecha</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <p class="note"><span class="material-icons">info</span> La base de datos corre en memoria. Usa <strong>Exportar</strong> para guardar el archivo .db y <strong>Importar</strong> para restaurarlo.</p>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
