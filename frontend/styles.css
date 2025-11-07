@@ -57,27 +57,7 @@ h1 .material-icons {
 }
 
 /* Controles superiores */
-.controls {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 20px;
-  align-items: center;
-  justify-content: flex-end;
-}
-
-.controls button {
-  padding: 10px 16px;
-  font-weight: 500;
-  transition: var(--transition);
-  display: flex;
-  align-items: center;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-}
-
-.controls button .material-icons {
-  margin-right: 8px;
-  font-size: 18px;
-}
+/* Controles de exportar/importar eliminados */
 
 .btn-primary {
   background-color: var(--primary);

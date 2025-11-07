@@ -1,0 +1,8 @@
+Campo	Tipo de Dato	Función
+id	INTEGER (PK)	Identificador único (Clave Primaria).
+nombre	TEXT/VARCHAR	Nombre del contacto.
+apellidoTEXT/VARCHAR	Apellido del contacto.
+empresa	TEXT/VARCHAR	Nombre de la empresa.
+cargo	TEXT/VARCHAR	Puesto o posición del contacto.
+telefonoTEXT/VARCHAR	Número de contacto.
+nota	TEXT	        Información adicional.
