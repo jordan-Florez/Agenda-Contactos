@@ -1,10 +1,31 @@
-
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import sqlite3
+import os
 
 app = FastAPI()
+
+# Inicialización automática de la base de datos y tabla
+DB_PATH = "agenda_contactos.db"
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('''
+    CREATE TABLE IF NOT EXISTS contactos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre TEXT NOT NULL,
+        apellido TEXT NOT NULL,
+        empresa TEXT,
+        cargo TEXT,
+        telefono TEXT,
+        nota TEXT
+    )
+    ''')
+    conn.commit()
+    conn.close()
+
+init_db()
 
 # Permitir peticiones desde cualquier origen (frontend)
 app.add_middleware(
@@ -14,8 +35,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-DB_PATH = "agenda_contactos.db"
 
 class Contacto(BaseModel):
     nombre: str
