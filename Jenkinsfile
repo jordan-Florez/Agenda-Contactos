@@ -7,6 +7,12 @@ pipeline {
                 checkout scm
             }
         }
+        stage('Clean Up') {
+            steps {
+                sh 'docker rm -f agenda_backend || true'
+                sh 'docker rm -f agenda_frontend || true'
+            }
+        }
         stage('Build Docker Images') {
             steps {
                 sh 'docker-compose build'
@@ -23,10 +29,10 @@ pipeline {
         //         sh 'docker-compose exec backend pytest'
         //     }
         // }
-        stage('Down Services') {
-            steps {
-                sh 'docker-compose down'
-            }
-        }
+        //stage('Down Services') {
+        //    steps {
+        //        sh 'docker-compose down'
+        //    }
+        //}
     }
 }
