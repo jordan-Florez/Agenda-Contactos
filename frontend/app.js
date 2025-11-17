@@ -5,9 +5,15 @@ function escapeHtml(s) {
   );
 }
 
+function getBackendUrl(path) {
+  // Si está en localhost, usa localhost; si está en contenedor, usa el nombre del servicio
+  const host = window.location.hostname === 'localhost' ? 'localhost' : 'agenda_backend';
+  return `http://${host}:8000${path}`;
+}
+
 function renderContactos() {
   const tbody = document.querySelector('#tablaContactos tbody');
-  fetch('http://localhost:8000/contactos')
+  fetch(getBackendUrl('/contactos'))
     .then(res => res.json())
     .then(rows => {
       tbody.innerHTML = '';
@@ -36,7 +42,7 @@ function renderContactos() {
 }
 
 function editarContacto(id) {
-  fetch(`http://localhost:8000/contactos/${id}`)
+  fetch(getBackendUrl(`/contactos/${id}`))
     .then(res => {
       if (!res.ok) throw new Error('Contacto no encontrado');
       return res.json();
@@ -55,7 +61,7 @@ function editarContacto(id) {
 
 function eliminarContacto(id) {
   if (!confirm('¿Eliminar contacto?')) return;
-  fetch(`http://localhost:8000/contactos/${id}`, {
+  fetch(getBackendUrl(`/contactos/${id}`), {
     method: 'DELETE'
   })
     .then(res => {
