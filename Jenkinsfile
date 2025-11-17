@@ -15,23 +15,23 @@ pipeline {
         }
         stage('Build Docker Images') {
             steps {
-                sh 'docker-compose build'
+                sh 'docker-compose -p agenda-contactos up --build -d'
             }
         }
         stage('Up Services') {
             steps {
-                sh 'docker-compose up -d'
+                sh 'docker-compose -p agenda-contactos up -d'
             }
         }
         // Código para futuramente correr los test
         // stage('Run Tests') {
         //     steps {
-        //         sh 'docker-compose exec backend pytest'
+        //         sh 'docker-compose -p agenda-contactos exec backend pytest'
         //     }
         // }
         //stage('Down Services') {
         //    steps {
-        //        sh 'docker-compose down'
+        //        sh 'docker-compose -p agenda-contactos down'
         //    }
         //}
     }
