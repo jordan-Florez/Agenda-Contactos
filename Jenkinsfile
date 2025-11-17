@@ -29,10 +29,10 @@ pipeline {
         //         sh 'docker-compose exec backend pytest'
         //     }
         // }
-        stage('Down Services') {
-            steps {
-                sh 'docker-compose down'
-            }
-        }
+        //stage('Down Services') {
+        //    steps {
+        //        sh 'docker-compose down'
+        //    }
+        //}
     }
 }
