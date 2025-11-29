@@ -9,8 +9,6 @@ pipeline {
     }
 
     stages {
-        // ... (Stages Checkout, Build Docker Image, Run Tests, Upload Coverage SIN CAMBIOS) ...
-
         stage('Checkout') {
             steps {
                 echo 'Descargando código fuente...'
@@ -21,13 +19,19 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 echo '🔨 Construyendo imagen de Docker...'
+                // Usa ${env.APP_DIR} y ${env.IMAGE_TAG} de forma segura.
                 sh "docker build -t ${env.IMAGE_TAG} -f ${env.APP_DIR}/Dockerfile ${env.APP_DIR}"
             }
         }
 
-        stage('Run Tests & Generate Reports') {
+        stage('Run Tests & Check Reports') {
             steps {
                 echo '🧪 Ejecutando pruebas dentro del contenedor...'
+                
+                // 1. Limpiamos reportes antiguos antes de correr
+                sh "rm -f ${env.APP_DIR}/results.xml"
+                
+                // 2. Ejecutamos Pytest con las salidas configuradas
                 sh """
                     docker run --rm \
                     -v ${WORKSPACE}/${env.APP_DIR}:/app \
@@ -35,6 +39,10 @@ pipeline {
                     ${env.IMAGE_TAG} \
                     /bin/bash -c "pytest --cov=. --cov-report=xml:coverage.xml --junitxml=results.xml"
                 """
+                
+                // 3. Verificamos la existencia del archivo (Esto hará que la etapa falle si no se generó)
+                sh "test -f ${env.APP_DIR}/results.xml"
+                echo "✅ results.xml fue generado con éxito."
             }
         }
 
@@ -46,21 +54,19 @@ pipeline {
         }
     }
 
-    // EL CAMBIO CRUCIAL ESTÁ AQUÍ
     post {
         always {
-            // Usamos un bloque script para lógica Groovy
+            // El bloque 'post' necesita un contexto de 'node' para usar 'junit' o 'sh'
             script {
                 echo '📄 Archivando resultados de tests...'
                 
-                // ¡LA SOLUCIÓN! Forzamos la ejecución de junit DENTRO de un nuevo contexto node
+                // Forzamos el contexto de 'node' para JUnit
                 node {
-                    // Aquí, JUnit ve el contexto necesario (hudson.Launcher)
                     junit "${env.APP_DIR}/results.xml"
                 }
 
                 echo '🧹 Limpiando imagen de Docker...'
-                // sh también requiere el contexto node/agent
+                // Forzamos el contexto de 'node' para 'sh'
                 node { 
                     sh "docker rmi ${env.IMAGE_TAG} || true" 
                 }
