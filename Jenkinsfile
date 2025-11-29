@@ -48,8 +48,9 @@ pipeline {
                         --junitxml=results.xml \
                         tests/
                     
-                    # Copiar el archivo de cobertura al workspace de Jenkins
+                    # Copiar archivos de resultados al workspace de Jenkins
                     docker cp agenda_backend:/app/coverage.xml ./coverage.xml
+                    docker cp agenda_backend:/app/results.xml ./results.xml
                 '''
             }
         }
