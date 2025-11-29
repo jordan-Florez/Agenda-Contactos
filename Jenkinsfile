@@ -31,17 +31,19 @@ pipeline {
         stage('Run Backend Tests & Codecov') {
             steps {
                 script {
-                    // Activar el venv y ejecutar pytest con cobertura
-                    sh '''
-                        . backend/venv/bin/activate
+                    // Crear el venv y ejecutar pruebas con cobertura
+                    sh """
+                        python3 -m venv backend/venv
+                        source backend/venv/bin/activate
+                        pip install --upgrade pip
+                        pip install -r backend/requirements.txt
                         cd backend
-                        pip install -r requirements.txt
                         pytest --cov=. --cov-report=xml
-                    '''
+                    """
 
                     // Subir resultados a Codecov usando el token
                     withCredentials([string(credentialsId: 'CODECOV_TOKEN', variable: 'CODECOV_TOKEN')]) {
-                        sh '. backend/venv/bin/activate && bash -c "codecov -t $CODECOV_TOKEN -f coverage.xml"'
+                        sh "codecov -t \$CODECOV_TOKEN -f backend/coverage.xml"
                     }
                 }
             }
