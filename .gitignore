@@ -22,3 +22,4 @@ Thumbs.db
 # Ignorar archivos de configuración de editor
 .vscode/
 
+backend/results.xml

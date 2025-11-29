@@ -19,19 +19,15 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 echo '🔨 Construyendo imagen de Docker...'
-                // Usa ${env.APP_DIR} y ${env.IMAGE_TAG} de forma segura.
                 sh "docker build -t ${env.IMAGE_TAG} -f ${env.APP_DIR}/Dockerfile ${env.APP_DIR}"
             }
         }
 
-        stage('Run Tests & Check Reports') {
+        stage('Run Tests & Generate Reports') {
             steps {
                 echo '🧪 Ejecutando pruebas dentro del contenedor...'
                 
-                // 1. Limpiamos reportes antiguos antes de correr
-                sh "rm -f ${env.APP_DIR}/results.xml"
-                
-                // 2. Ejecutamos Pytest con las salidas configuradas
+                // 1. Comando docker run que ahora funciona gracias a 'pytest-cov'
                 sh """
                     docker run --rm \
                     -v ${WORKSPACE}/${env.APP_DIR}:/app \
@@ -40,9 +36,9 @@ pipeline {
                     /bin/bash -c "pytest --cov=. --cov-report=xml:coverage.xml --junitxml=results.xml"
                 """
                 
-                // 3. Verificamos la existencia del archivo (Esto hará que la etapa falle si no se generó)
+                // 2. Comprobación obligatoria: Si el archivo no existe, la etapa FALLA aquí.
                 sh "test -f ${env.APP_DIR}/results.xml"
-                echo "✅ results.xml fue generado con éxito."
+                echo "✅ results.xml y coverage.xml fueron generados con éxito."
             }
         }
 
@@ -60,13 +56,13 @@ pipeline {
             script {
                 echo '📄 Archivando resultados de tests...'
                 
-                // Forzamos el contexto de 'node' para JUnit
+                // SOLUCIÓN FINAL: junit dentro del contexto node
                 node {
                     junit "${env.APP_DIR}/results.xml"
                 }
 
                 echo '🧹 Limpiando imagen de Docker...'
-                // Forzamos el contexto de 'node' para 'sh'
+                // sh dentro del contexto node para asegurar la ejecución
                 node { 
                     sh "docker rmi ${env.IMAGE_TAG} || true" 
                 }
