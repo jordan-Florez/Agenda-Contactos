@@ -1,12 +1,10 @@
 pipeline {
-    // Agente global, lo que obliga a usar 'node {}' en el post
+    // Usamos 'agent any'
     agent any 
 
     environment {
-        // Variables de Entorno
+        // Mantenemos SOLO el token de credenciales aquí
         CODECOV_TOKEN = credentials('codecov-token-id')
-        APP_DIR = "backend"
-        IMAGE_TAG = "agenda-contactos-backend:${env.BUILD_NUMBER}"
     }
 
     stages {
@@ -20,8 +18,8 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 echo '🔨 Construyendo imagen de Docker...'
-                // Si la construcción falla (ej: error en Dockerfile), el pipeline se detendrá aquí
-                sh "docker build -t ${env.IMAGE_TAG} -f ${env.APP_DIR}/Dockerfile ${env.APP_DIR}"
+                // Usamos la variable de ambiente BUILD_NUMBER directamente en sh
+                sh "docker build -t agenda-contactos-backend:${env.BUILD_NUMBER} -f backend/Dockerfile backend"
             }
         }
 
@@ -29,17 +27,21 @@ pipeline {
             steps {
                 echo '🧪 Ejecutando pruebas dentro del contenedor...'
                 
-                // Ejecución de Pytest: genera results.xml y coverage.xml
+                // Definición de variables locales de Groovy para usar en este stage
+                def APP_DIR = "backend"
+                def IMAGE_TAG = "agenda-contactos-backend:${env.BUILD_NUMBER}"
+                
+                // Ejecución de Pytest, usando las variables locales
                 sh """
                     docker run --rm \
-                    -v ${WORKSPACE}/${env.APP_DIR}:/app \
+                    -v ${WORKSPACE}/${APP_DIR}:/app \
                     -w /app \
-                    ${env.IMAGE_TAG} \
+                    ${IMAGE_TAG} \
                     /bin/bash -c "pytest --cov=. --cov-report=xml:coverage.xml --junitxml=results.xml"
                 """
                 
-                // Comprobación de existencia: Si el archivo no existe (por un fallo en pytest), la etapa fallará AHORA.
-                sh "test -f ${env.APP_DIR}/results.xml"
+                // Comprobación de existencia (fallo inmediato si no se genera el archivo)
+                sh "test -f ${APP_DIR}/results.xml"
                 echo "✅ results.xml y coverage.xml fueron generados con éxito."
             }
         }
@@ -47,26 +49,30 @@ pipeline {
         stage('Upload Coverage') {
             steps {
                 echo '📈 Subiendo cobertura a Codecov...'
-                sh "codecov -t ${env.CODECOV_TOKEN} -f ${env.APP_DIR}/coverage.xml"
+                // Usamos la ruta fija para evitar problemas de variables
+                sh "codecov -t ${env.CODECOV_TOKEN} -f backend/coverage.xml"
             }
         }
     }
 
-    // Bloque post para limpiar y archivar, resolviendo problemas de contexto
     post {
         always {
+            // El bloque 'post' necesita un contexto de 'node' para usar 'junit' y 'sh'
             script {
                 echo '📄 Archivando resultados de tests...'
                 
-                // SOLUCIÓN FINAL CONTEXTO: junit debe estar dentro de un bloque 'node'
                 node {
-                    junit "${env.APP_DIR}/results.xml"
+                    // Usamos la ruta fija
+                    junit "backend/results.xml"
                 }
 
                 echo '🧹 Limpiando imagen de Docker...'
-                // sh también necesita contexto 'node' si está en el post con agent any
+                
+                // Definimos IMAGE_TAG aquí, asegurándonos de que esté disponible
+                def IMAGE_TAG = "agenda-contactos-backend:${env.BUILD_NUMBER}"
+
                 node { 
-                    sh "docker rmi ${env.IMAGE_TAG} || true" 
+                    sh "docker rmi ${IMAGE_TAG} || true" 
                 }
             }
         }
