@@ -30,7 +30,7 @@ pipeline {
                 script {
                     echo "Ejecutando tests en el backend..."
                     sh """
-                        docker-compose exec -e CODECOV_TOKEN=\$CODECOV_TOKEN backend sh -c '
+                        docker-compose exec -T -e CODECOV_TOKEN=\$CODECOV_TOKEN backend sh -c '
                         mkdir -p /app/tests/results &&
                         pytest --junitxml=/app/tests/results/results.xml &&
                         codecov
