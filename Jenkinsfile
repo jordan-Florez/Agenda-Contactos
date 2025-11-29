@@ -24,11 +24,15 @@ pipeline {
             }
         }
         // Código para futuramente correr los test
-        // stage('Run Tests') {
-        //     steps {
-        //         sh 'docker-compose -p agenda-contactos exec backend pytest'
-        //     }
-        // }
+        stage('Run Tests') {
+            steps {
+                sh '''
+                    source backend/venv/bin/activate
+                    cd backend
+                    pytest --maxfail=1 --disable-warnings -q
+                '''
+            }
+        }
         //stage('Down Services') {
         //    steps {
         //        sh 'docker-compose -p agenda-contactos down'

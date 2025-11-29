@@ -1,13 +1,14 @@
 // Función de utilidad para escapar HTML
 function escapeHtml(s) {
   return String(s || '').replace(/[&<>"']/g, c =>
-    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": "&#39;" })[c]
+    ({ '&': '&amp;', '<': '&lt;', '>': '&lt;', '"': '&quot;', "'": "&#39;" })[c]
   );
 }
 
 function getBackendUrl(path) {
   // Si está en localhost, usa localhost; si está en contenedor, usa el nombre del servicio
-  const host = window.location.hostname === 'localhost' ? 'localhost' : 'agenda_backend';
+  // const host = window.location.hostname === 'localhost' ? 'localhost' : 'agenda_backend';
+  const host = window.location.hostname === 'localhost' ? 'localhost' : 'backend';
   return `http://${host}:8000${path}`;
 }
 
@@ -83,26 +84,22 @@ function guardarContacto(event) {
   const cargo = document.getElementById('cargo').value.trim();
   const telefono = document.getElementById('telefono').value.trim();
   const nota = document.getElementById('nota').value.trim();
+
   if (!nombre || !apellido) {
     alert('Nombre y apellido son obligatorios');
     return;
   }
+
   const contacto = { nombre, apellido, empresa, cargo, telefono, nota };
+
   if (id) {
-    // Actualización (no implementada en backend, solo ejemplo)
-    alert('La edición de contactos aún no está implementada en el backend.');
-    document.getElementById('contactForm').reset();
-    document.getElementById('idContacto').value = '';
-    renderContactos();
-    return;
-  } else {
-  fetch('http://localhost:8000/contactos', {
-      method: 'POST',
+    fetch(getBackendUrl(`/contactos/${id}`), {
+      method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(contacto)
     })
       .then(res => {
-        if (!res.ok) throw new Error('No se pudo guardar');
+        if (!res.ok) throw new Error('No se pudo actualizar');
         return res.json();
       })
       .then(() => {
@@ -110,17 +107,36 @@ function guardarContacto(event) {
         document.getElementById('idContacto').value = '';
         renderContactos();
       })
-      .catch(() => alert('No se pudo guardar'));
+      .catch(() => alert('No se pudo actualizar'));
+    return;
   }
+
+  // Crear contacto
+  fetch(getBackendUrl('/contactos'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(contacto)
+  })
+    .then(res => {
+      if (!res.ok) throw new Error('No se pudo guardar');
+      return res.json();
+    })
+    .then(() => {
+      document.getElementById('contactForm').reset();
+      document.getElementById('idContacto').value = '';
+      renderContactos();
+    })
+    .catch(() => alert('No se pudo guardar'));
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Eventos para la tabla de contactos
   const tbody = document.querySelector('#tablaContactos tbody');
+
   tbody.addEventListener('click', (ev) => {
     const btn = ev.target.closest('button');
     if (!btn) return;
     const id = btn.dataset.id;
+
     if (btn.classList.contains('edit')) {
       editarContacto(id);
     } else if (btn.classList.contains('del')) {
@@ -128,10 +144,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Eventos para el formulario
   const form = document.getElementById('contactForm');
   form.addEventListener('submit', guardarContacto);
 
-  // Renderizar contactos al cargar
   renderContactos();
 });
