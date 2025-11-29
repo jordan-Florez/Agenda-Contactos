@@ -1,14 +1,20 @@
-version: '3.9'
+version: '3.9'  # puedes eliminar la línea 'version' si quieres, es obsoleta
+
 services:
-  frontend:
-    build: ./frontend
-    container_name: agenda_frontend
-    ports:
-      - "80:80"
-    depends_on:
-      - backend
   backend:
-    build: ./backend
+    build:
+      context: ./backend
     container_name: agenda_backend
     ports:
       - "8000:8000"
+    volumes:
+      - ./backend/tests/results:/app/tests/results
+    environment:
+      - CODECOV_TOKEN=${CODECOV_TOKEN}
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: agenda_frontend
+    ports:
+      - "80:80"
