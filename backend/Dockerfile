@@ -13,5 +13,10 @@ COPY . /app
 # Instalar dependencias de Python
 RUN pip install --no-cache-dir fastapi uvicorn pytest codecov httpx
 
-# Comando por defecto (solo para desarrollo, Jenkins ejecutará pytest con docker-compose exec)
+#ENTRYPOINT para CI
+# Este comando simplemente espera un comando de Jenkins y lo ejecuta, 
+# asegurando que el contenedor no se detenga inmediatamente.
+ENTRYPOINT ["/bin/bash", "-c"]
+
+# Comando por defecto (CMD) se mantiene, pero será ignorado por el Jenkins Pipeline
 CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
