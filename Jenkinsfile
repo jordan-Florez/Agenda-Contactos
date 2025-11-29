@@ -2,61 +2,57 @@ pipeline {
     agent any
 
     environment {
-        CODECOV_TOKEN = credentials('CODECOV_TOKEN')
+        CODECOV_TOKEN = credentials('codecov-token') // Ajusta el ID de tu credencial
     }
 
     stages {
-        stage('Checkout') {
+
+        stage('Stop Containers (if needed)') {
             steps {
-                checkout scm
+                sh 'docker-compose down || true'
             }
         }
 
-        stage('Setup Python') {
+        stage('Start Containers') {
             steps {
-                // Forzamos bash con '''bash -c'''
-                sh '''
-                bash -c "
-                python3 -m venv venv
-                source venv/bin/activate
-                pip install --upgrade pip
-                pip install -r backend/requirements.txt
-                "
-                '''
+                sh 'docker-compose up -d'
             }
         }
 
-        stage('Run Tests & Coverage') {
+        stage('Run Tests & Coverage in Backend Container') {
             steps {
-                sh '''
-                bash -c "
-                export PYTHONPATH=.
-                source venv/bin/activate
-                pytest --cov=backend --cov-report=xml --junitxml=backend/tests/test-results/results.xml
-                "
-                '''
+                script {
+                    // Ejecuta pytest dentro del contenedor backend
+                    sh """
+                    docker exec backend bash -c '
+                        pip install --upgrade pip
+                        pip install -r backend/requirements.txt
+                        export PYTHONPATH=.
+                        pytest --cov=backend --cov-report=xml --junitxml=backend/tests/test-results/results.xml
+                    '
+                    """
+                }
             }
         }
 
         stage('Upload Coverage to Codecov') {
             steps {
-                sh '''
-                bash -c "
-                source venv/bin/activate
-                bash <(curl -s https://codecov.io/bash) -t $CODECOV_TOKEN
-                "
-                '''
+                script {
+                    sh """
+                    docker exec backend bash -c '
+                        bash <(curl -s https://codecov.io/bash) -t ${CODECOV_TOKEN}
+                    '
+                    """
+                }
             }
         }
     }
 
     post {
         always {
-            archiveArtifacts artifacts: 'coverage.xml', allowEmptyArchive: true
-            junit 'backend/tests/test-results/results.xml'
-        }
-        success {
-            echo 'Pipeline ejecutado correctamente ✅'
+            archiveArtifacts artifacts: 'backend/tests/test-results/**/*.xml', allowEmptyArchive: true
+            junit 'backend/tests/test-results/**/*.xml'
+            echo 'Pipeline ejecutado ✅'
         }
         failure {
             echo 'Pipeline falló ❌'
