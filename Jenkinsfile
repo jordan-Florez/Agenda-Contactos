@@ -1,24 +1,33 @@
 pipeline {
     agent any
 
+    environment {
+        // Token de Codecov, almacenado como credencial en Jenkins
+        CODECOV_TOKEN = credentials('CODECOV_TOKEN')
+    }
+
     stages {
 
-        stage('Checkout') {
+        stage('Checkout SCM') {
             steps {
+                // Obtener código del repositorio
                 checkout scm
             }
         }
 
         stage('Clean Up') {
             steps {
-                sh 'docker rm -f agenda_backend || true'
-                sh 'docker rm -f agenda_frontend || true'
+                // Eliminar contenedores existentes si existen
+                sh '''
+                    docker rm -f agenda_backend || true
+                    docker rm -f agenda_frontend || true
+                '''
             }
         }
 
         stage('Build Docker Images') {
             steps {
-                sh 'docker-compose -p agenda-contactos up --build -d'
+                sh 'docker-compose -p agenda-contactos build'
             }
         }
 
@@ -31,22 +40,46 @@ pipeline {
         stage('Run Backend Tests & Codecov') {
             steps {
                 script {
-                    // Crear el venv y ejecutar pruebas con cobertura
-                    sh """
+                    sh '''
+                        # Crear y activar virtualenv en un solo bloque
                         python3 -m venv backend/venv
-                        source backend/venv/bin/activate
+                        # Activar el venv usando "." compatible con sh
+                        . backend/venv/bin/activate
+                        
+                        # Actualizar pip y instalar dependencias
                         pip install --upgrade pip
-                        pip install -r backend/requirements.txt
+                        if [ -f backend/requirements.txt ]; then
+                            pip install -r backend/requirements.txt
+                        else
+                            pip install fastapi uvicorn pytest pytest-cov
+                        fi
+
+                        # Ejecutar pruebas y generar reporte de cobertura
                         cd backend
                         pytest --cov=. --cov-report=xml
-                    """
+                    '''
 
-                    // Subir resultados a Codecov usando el token
-                    withCredentials([string(credentialsId: 'CODECOV_TOKEN', variable: 'CODECOV_TOKEN')]) {
-                        sh "codecov -t \$CODECOV_TOKEN -f backend/coverage.xml"
-                    }
+                    // Subir reporte a Codecov
+                    sh 'codecov -t $CODECOV_TOKEN -f backend/coverage.xml'
                 }
             }
+        }
+    }
+
+    post {
+        always {
+            // Asegurarse de limpiar los contenedores al final del pipeline
+            sh '''
+                docker-compose -p agenda-contactos down
+            '''
+        }
+
+        success {
+            echo 'Pipeline finalizado correctamente ✅'
+        }
+
+        failure {
+            echo 'Pipeline falló ❌'
         }
     }
 }
