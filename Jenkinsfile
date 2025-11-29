@@ -1,5 +1,6 @@
 pipeline {
-    agent any
+    // Agente global, lo que obliga a usar 'node {}' en el post
+    agent any 
 
     environment {
         // Variables de Entorno
@@ -19,6 +20,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 echo '🔨 Construyendo imagen de Docker...'
+                // Si la construcción falla (ej: error en Dockerfile), el pipeline se detendrá aquí
                 sh "docker build -t ${env.IMAGE_TAG} -f ${env.APP_DIR}/Dockerfile ${env.APP_DIR}"
             }
         }
@@ -27,7 +29,7 @@ pipeline {
             steps {
                 echo '🧪 Ejecutando pruebas dentro del contenedor...'
                 
-                // 1. Comando docker run que ahora funciona gracias a 'pytest-cov'
+                // Ejecución de Pytest: genera results.xml y coverage.xml
                 sh """
                     docker run --rm \
                     -v ${WORKSPACE}/${env.APP_DIR}:/app \
@@ -36,7 +38,7 @@ pipeline {
                     /bin/bash -c "pytest --cov=. --cov-report=xml:coverage.xml --junitxml=results.xml"
                 """
                 
-                // 2. Comprobación obligatoria: Si el archivo no existe, la etapa FALLA aquí.
+                // Comprobación de existencia: Si el archivo no existe (por un fallo en pytest), la etapa fallará AHORA.
                 sh "test -f ${env.APP_DIR}/results.xml"
                 echo "✅ results.xml y coverage.xml fueron generados con éxito."
             }
@@ -50,19 +52,19 @@ pipeline {
         }
     }
 
+    // Bloque post para limpiar y archivar, resolviendo problemas de contexto
     post {
         always {
-            // El bloque 'post' necesita un contexto de 'node' para usar 'junit' o 'sh'
             script {
                 echo '📄 Archivando resultados de tests...'
                 
-                // SOLUCIÓN FINAL: junit dentro del contexto node
+                // SOLUCIÓN FINAL CONTEXTO: junit debe estar dentro de un bloque 'node'
                 node {
                     junit "${env.APP_DIR}/results.xml"
                 }
 
                 echo '🧹 Limpiando imagen de Docker...'
-                // sh dentro del contexto node para asegurar la ejecución
+                // sh también necesita contexto 'node' si está en el post con agent any
                 node { 
                     sh "docker rmi ${env.IMAGE_TAG} || true" 
                 }
