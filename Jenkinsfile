@@ -2,11 +2,11 @@ pipeline {
     agent any
 
     environment {
-        CODECOV_TOKEN = credentials('CODECOV_TOKEN')
+        CODECOV_TOKEN = credentials('codecov-token')
+        PYTHONPATH = "."
     }
 
     stages {
-
         stage('Checkout SCM') {
             steps {
                 checkout scm
@@ -16,8 +16,8 @@ pipeline {
         stage('Clean Up') {
             steps {
                 sh '''
-                    docker rm -f agenda_backend || true
-                    docker rm -f agenda_frontend || true
+                docker rm -f agenda_backend || true
+                docker rm -f agenda_frontend || true
                 '''
             }
         }
@@ -34,30 +34,35 @@ pipeline {
             }
         }
 
-        stage('Run Backend Tests & Codecov') {
+        stage('Run Backend Tests & Coverage') {
             steps {
-                script {
+                dir('backend') {
                     sh '''
-                        python3 -m venv backend/venv
-                        . backend/venv/bin/activate
-                        pip install --upgrade pip
-                        pip install -r backend/requirements.txt
-                        cd backend
-                        pytest --cov=. --cov-report=xml
+                    python3 -m venv venv
+                    . venv/bin/activate
+                    pip install --upgrade pip
+                    pip install -r requirements.txt
+                    PYTHONPATH=$PYTHONPATH pytest --cov=backend --cov-report=xml
                     '''
-                    sh 'codecov -t $CODECOV_TOKEN -f backend/coverage.xml'
                 }
+                // Subir reporte a Codecov
+                sh '''
+                bash <(curl -s https://codecov.io/bash) -t $CODECOV_TOKEN
+                '''
             }
         }
     }
 
     post {
         always {
-            sh 'docker-compose -p agenda-contactos down'
+            sh '''
+            docker-compose -p agenda-contactos down
+            rm -rf backend/venv .pytest_cache __pycache__ .coverage
+            '''
         }
 
         success {
-            echo 'Pipeline finalizado correctamente ✅'
+            echo 'Pipeline ejecutado con éxito ✅'
         }
 
         failure {
