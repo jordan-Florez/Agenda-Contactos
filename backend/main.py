@@ -94,3 +94,19 @@ def delete_contacto(contacto_id: int):
         return {"ok": True}
     else:
         raise HTTPException(status_code=404, detail="Contacto no encontrado")
+
+@app.put("/contactos/{contacto_id}")
+def update_contacto(contacto_id: int, contacto: Contacto):
+    conn = get_db()
+    cursor = conn.execute(
+        """UPDATE contactos SET nombre=?, apellido=?, empresa=?, cargo=?, telefono=?, nota=?
+           WHERE id=?""",
+        (contacto.nombre, contacto.apellido, contacto.empresa, contacto.cargo, contacto.telefono, contacto.nota, contacto_id)
+    )
+    conn.commit()
+    conn.close()
+
+    if cursor.rowcount:
+        return {"id": contacto_id, **contacto.dict()}
+    else:
+        raise HTTPException(status_code=404, detail="Contacto no encontrado")
