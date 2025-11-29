@@ -4,9 +4,9 @@ pipeline {
         dockerfile {
             dir 'backend'
             filename 'Dockerfile'
-            // IMPORTANTE: Estos argumentos fuerzan al contenedor a permanecer activo y 
-            // a ejecutar como root para evitar problemas de permisos de usuario.
-            args '-u root cat'
+            // Solamente agregamos el usuario 'root' para permisos. 
+            // Jenkins añadirá el comando 'cat' para mantenerlo vivo.
+            args '-u root'
         }
     }
 
