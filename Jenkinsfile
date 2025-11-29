@@ -22,51 +22,39 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 echo '🔨 Construyendo imagen de Docker...'
-                script {
-                    // Construimos la imagen, usando el contexto de la carpeta 'backend'
-                    sh "docker build -t ${IMAGE_TAG} -f ${APP_DIR}/Dockerfile ${APP_DIR}"
-                }
+                sh "docker build -t ${IMAGE_TAG} -f ${APP_DIR}/Dockerfile ${APP_DIR}"
             }
         }
 
         stage('Run Tests & Generate Reports') {
             steps {
                 echo '🧪 Ejecutando pruebas dentro del contenedor...'
-                script {
-                    // Comando crucial: Correr Docker y generar reportes.
-                    sh """
-                        docker run --rm \
-                        # Montamos la carpeta 'backend' del Jenkins HOST en '/app' del contenedor.
-                        # Esto es VITAL para que los archivos generados adentro aparezcan afuera.
-                        -v ${WORKSPACE}/${APP_DIR}:/app \
-                        # Establecemos el directorio de trabajo dentro del contenedor.
-                        -w /app \
-                        # Ejecutamos la imagen.
-                        ${IMAGE_TAG} \
-                        # El comando para correr pytest. Genera coverage.xml y results.xml en el volumen montado.
-                        /bin/bash -c "pytest --cov=. --cov-report=xml:coverage.xml --junitxml=results.xml"
-                    """
-                }
+                sh """
+                    docker run --rm \
+                    -v ${WORKSPACE}/${APP_DIR}:/app \
+                    -w /app \
+                    ${IMAGE_TAG} \
+                    /bin/bash -c "pytest --cov=. --cov-report=xml:coverage.xml --junitxml=results.xml"
+                """
             }
         }
 
         stage('Upload Coverage') {
             steps {
                 echo '📈 Subiendo cobertura a Codecov...'
-                // Codecov lee el archivo que está en el directorio montado (${WORKSPACE}/backend/coverage.xml)
                 sh "codecov -t $CODECOV_TOKEN -f ${APP_DIR}/coverage.xml"
             }
         }
     }
-
+    
     post {
         always {
             echo '📄 Archivando resultados de tests...'
-            // JUnit lee el archivo que está en el directorio montado
+            // JUnit requiere ejecutarse dentro de un agente
             junit "${APP_DIR}/results.xml"
 
             echo '🧹 Limpiando imagen de Docker...'
-            // Intentamos borrar la imagen para no llenar el disco del servidor
+            // Eliminar la imagen requiere el contexto del host
             sh "docker rmi ${IMAGE_TAG} || true"
         }
         success {
