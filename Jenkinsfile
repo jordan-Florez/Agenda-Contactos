@@ -1,22 +1,25 @@
 pipeline {
-    // Define el agente como un contenedor Docker.
+    // Agente que construye la imagen a partir de tu Dockerfile y la usa
     agent {
         dockerfile {
-            // Asume que el Dockerfile para el backend está en el subdirectorio 'backend/'
             dir 'backend'
             filename 'Dockerfile'
+            // IMPORTANTE: Estos argumentos fuerzan al contenedor a permanecer activo y 
+            // a ejecutar como root para evitar problemas de permisos de usuario.
+            args '-u root cat'
         }
     }
 
     environment {
-        // Token de Codecov almacenado en Jenkins
+        // Asegúrate de que este ID de credencial exista en Jenkins
         CODECOV_TOKEN = credentials('codecov-token-id')
     }
 
     stages {
         stage('Checkout') {
             steps {
-                // El checkout del SCM debe ir primero
+                echo 'Descargando código fuente...'
+                // El checkout se ejecuta en el agente Jenkins HOST antes de que el contenedor se inicie
                 checkout scm
             }
         }
@@ -24,11 +27,12 @@ pipeline {
         stage('Run Tests & Generate Reports') {
             steps {
                 echo 'Ejecutando tests y generando reportes de cobertura...'
-                // Ejecutamos los comandos DENTRO del contenedor Docker.
-                // --cov=backend: Asegura que pytest mida la cobertura del módulo 'backend'.
-                // --cov-report=xml:coverage.xml: Genera el reporte de cobertura en formato XML.
-                // --junitxml=results.xml: Genera el reporte JUnit para Jenkins.
+                // Los comandos se ejecutan DENTRO del contenedor Docker
                 sh '''
+                    # Ejecutar tests: 
+                    # --cov=backend: Mide cobertura del módulo 'backend'
+                    # --cov-report=xml:coverage.xml: Genera reporte de cobertura para Codecov
+                    # --junitxml=results.xml: Genera reporte de JUnit para Jenkins
                     pytest --cov=backend --cov-report=xml:coverage.xml --junitxml=results.xml
                 '''
             }
@@ -37,7 +41,7 @@ pipeline {
         stage('Upload coverage') {
             steps {
                 echo 'Subiendo cobertura a Codecov...'
-                // Usamos el archivo 'coverage.xml' (NO results.xml) para Codecov
+                // Sube el reporte XML usando el token
                 sh "codecov -t $CODECOV_TOKEN -f coverage.xml"
             }
         }
@@ -46,11 +50,11 @@ pipeline {
     post {
         always {
             echo 'Archivando resultados de tests...'
-            // El paso 'junit' ahora se ejecuta con el contexto de agente correcto.
+            // Archiva los resultados de JUnit generados. Ahora debería funcionar.
             junit '**/results.xml'
         }
         success {
-            echo '✅ Pipeline finalizó correctamente. Artefactos listos para el despliegue.'
+            echo '✅ Pipeline finalizó correctamente.'
         }
         failure {
             echo '❌ Pipeline falló. Revisar logs de tests y cobertura.'
