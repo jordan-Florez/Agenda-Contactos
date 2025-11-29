@@ -1,5 +1,12 @@
 pipeline {
-    agent any
+    // Define el agente como un contenedor Docker.
+    agent {
+        dockerfile {
+            // Asume que el Dockerfile para el backend está en el subdirectorio 'backend/'
+            dir 'backend'
+            filename 'Dockerfile'
+        }
+    }
 
     environment {
         // Token de Codecov almacenado en Jenkins
@@ -9,27 +16,29 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
+                // El checkout del SCM debe ir primero
                 checkout scm
             }
         }
 
-        stage('Install dependencies') {
+        stage('Run Tests & Generate Reports') {
             steps {
-                sh 'pip install -r requirements.txt'
-            }
-        }
-
-        stage('Run Tests') {
-            steps {
-                // Ejecutar tests y generar XML para junit
-                sh 'pytest --junitxml=results.xml'
+                echo 'Ejecutando tests y generando reportes de cobertura...'
+                // Ejecutamos los comandos DENTRO del contenedor Docker.
+                // --cov=backend: Asegura que pytest mida la cobertura del módulo 'backend'.
+                // --cov-report=xml:coverage.xml: Genera el reporte de cobertura en formato XML.
+                // --junitxml=results.xml: Genera el reporte JUnit para Jenkins.
+                sh '''
+                    pytest --cov=backend --cov-report=xml:coverage.xml --junitxml=results.xml
+                '''
             }
         }
 
         stage('Upload coverage') {
             steps {
-                // Subir cobertura a Codecov
-                sh 'codecov -t $CODECOV_TOKEN -f results.xml'
+                echo 'Subiendo cobertura a Codecov...'
+                // Usamos el archivo 'coverage.xml' (NO results.xml) para Codecov
+                sh "codecov -t $CODECOV_TOKEN -f coverage.xml"
             }
         }
     }
@@ -37,13 +46,14 @@ pipeline {
     post {
         always {
             echo 'Archivando resultados de tests...'
+            // El paso 'junit' ahora se ejecuta con el contexto de agente correcto.
             junit '**/results.xml'
         }
         success {
-            echo 'Pipeline finalizó correctamente.'
+            echo '✅ Pipeline finalizó correctamente. Artefactos listos para el despliegue.'
         }
         failure {
-            echo 'Pipeline falló.'
+            echo '❌ Pipeline falló. Revisar logs de tests y cobertura.'
         }
     }
 }
