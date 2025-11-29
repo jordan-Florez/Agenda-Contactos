@@ -2,15 +2,15 @@ pipeline {
     agent any
 
     environment {
-        // Variables de Entorno que necesitan persistir
+        // Variables de Entorno
         CODECOV_TOKEN = credentials('codecov-token-id')
         APP_DIR = "backend"
-        
-        // La variable IMAGE_TAG se define aquí, como debe ser.
         IMAGE_TAG = "agenda-contactos-backend:${env.BUILD_NUMBER}"
     }
 
     stages {
+        // ... (Stages Checkout, Build Docker Image, Run Tests, Upload Coverage SIN CAMBIOS) ...
+
         stage('Checkout') {
             steps {
                 echo 'Descargando código fuente...'
@@ -21,7 +21,6 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 echo '🔨 Construyendo imagen de Docker...'
-                // Usamos ${env.APP_DIR} y ${env.IMAGE_TAG}
                 sh "docker build -t ${env.IMAGE_TAG} -f ${env.APP_DIR}/Dockerfile ${env.APP_DIR}"
             }
         }
@@ -31,7 +30,6 @@ pipeline {
                 echo '🧪 Ejecutando pruebas dentro del contenedor...'
                 sh """
                     docker run --rm \
-                    # Usamos ${env.APP_DIR} y ${env.IMAGE_TAG}
                     -v ${WORKSPACE}/${env.APP_DIR}:/app \
                     -w /app \
                     ${env.IMAGE_TAG} \
@@ -43,23 +41,29 @@ pipeline {
         stage('Upload Coverage') {
             steps {
                 echo '📈 Subiendo cobertura a Codecov...'
-                // Usamos ${env.CODECOV_TOKEN} y ${env.APP_DIR}
                 sh "codecov -t ${env.CODECOV_TOKEN} -f ${env.APP_DIR}/coverage.xml"
             }
         }
     }
 
-    // El bloque post es donde tuvimos el problema de visibilidad.
+    // EL CAMBIO CRUCIAL ESTÁ AQUÍ
     post {
         always {
-            script { // Usamos script para asegurar que Groovy procese la sintaxis
+            // Usamos un bloque script para lógica Groovy
+            script {
                 echo '📄 Archivando resultados de tests...'
-                // Usamos ${env.APP_DIR} de forma segura.
-                junit "${env.APP_DIR}/results.xml" 
+                
+                // ¡LA SOLUCIÓN! Forzamos la ejecución de junit DENTRO de un nuevo contexto node
+                node {
+                    // Aquí, JUnit ve el contexto necesario (hudson.Launcher)
+                    junit "${env.APP_DIR}/results.xml"
+                }
 
                 echo '🧹 Limpiando imagen de Docker...'
-                // Usamos ${env.IMAGE_TAG} de forma segura.
-                sh "docker rmi ${env.IMAGE_TAG} || true" 
+                // sh también requiere el contexto node/agent
+                node { 
+                    sh "docker rmi ${env.IMAGE_TAG} || true" 
+                }
             }
         }
         success {
