@@ -2,35 +2,52 @@ pipeline {
     agent any
 
     environment {
-        # La credencial de Codecov que configuraste en Jenkins
+        // Token de Codecov configurado en Jenkins como Secret Text
         CODECOV_TOKEN = credentials('CODECOV_TOKEN')
     }
 
     stages {
         stage('Checkout') {
             steps {
+                // Obtenemos el código del repositorio
                 checkout scm
             }
         }
 
-        stage('Install Dependencies') {
+        stage('Setup Python') {
             steps {
                 script {
+                    // Activamos entorno virtual y instalamos dependencias
                     sh '''
                     python3 -m venv venv
                     source venv/bin/activate
                     pip install --upgrade pip
-                    pip install -r requirements.txt
+                    pip install -r backend/requirements.txt
                     '''
                 }
             }
         }
 
-        stage('Run Tests') {
+        stage('Run Tests & Coverage') {
             steps {
                 script {
-                    // Ejecutar pytest con cobertura
-                    sh 'PYTHONPATH=. venv/bin/pytest --cov=backend --cov-report=xml'
+                    sh '''
+                    # Configuramos PYTHONPATH para que los imports funcionen
+                    export PYTHONPATH=.
+                    source venv/bin/activate
+                    pytest --cov=backend --cov-report=xml
+                    '''
+                }
+            }
+        }
+
+        stage('Upload Coverage to Codecov') {
+            steps {
+                script {
+                    sh '''
+                    source venv/bin/activate
+                    bash <(curl -s https://codecov.io/bash) -t $CODECOV_TOKEN
+                    '''
                 }
             }
         }
@@ -38,14 +55,15 @@ pipeline {
 
     post {
         always {
-            // Todo lo que toque archivos o workspace debe estar dentro de node
-            node {
-                echo "Archiving coverage report..."
-                archiveArtifacts artifacts: 'coverage.xml', allowEmptyArchive: true
-
-                echo "Uploading coverage to Codecov..."
-                sh 'bash <(curl -s https://codecov.io/bash) -t $CODECOV_TOKEN || echo "Codecov upload failed"'
-            }
+            // Guardar resultados de cobertura y logs aunque falle
+            archiveArtifacts artifacts: 'coverage.xml', allowEmptyArchive: true
+            junit 'backend/tests/test-results/*.xml' // si usas JUnit XML output
+        }
+        success {
+            echo 'Pipeline ejecutado correctamente ✅'
+        }
+        failure {
+            echo 'Pipeline falló ❌'
         }
     }
 }
