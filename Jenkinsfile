@@ -2,22 +2,13 @@ pipeline {
     agent any
 
     environment {
-        // Variables de Entorno que necesitan persistir y ser seguras
+        // Variables de Entorno que necesitan persistir
         CODECOV_TOKEN = credentials('codecov-token-id')
-        // APP_DIR no se toca, pero será referenciada como ${env.APP_DIR} en el post
         APP_DIR = "backend"
+        
+        // La variable IMAGE_TAG se define aquí, como debe ser.
+        IMAGE_TAG = "agenda-contactos-backend:${env.BUILD_NUMBER}"
     }
-
-    // Definimos una variable Groovy local antes de los stages.
-    // Usaremos esta para la limpieza en el post de forma segura.
-    // Esto es un 'hack' para evadir la restricción del Sandbox.
-    libraries {
-        // Esta sección es puramente para definir variables que Groovy pueda ver fácilmente
-    }
-    
-    // Nueva variable de Groovy que se define de forma segura
-    def IMAGE_TAG_VAR = "agenda-contactos-backend:${env.BUILD_NUMBER}"
-
 
     stages {
         stage('Checkout') {
@@ -30,8 +21,8 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 echo '🔨 Construyendo imagen de Docker...'
-                // Usamos la variable local de Groovy para el TAG
-                sh "docker build -t ${IMAGE_TAG_VAR} -f ${env.APP_DIR}/Dockerfile ${env.APP_DIR}"
+                // Usamos ${env.APP_DIR} y ${env.IMAGE_TAG}
+                sh "docker build -t ${env.IMAGE_TAG} -f ${env.APP_DIR}/Dockerfile ${env.APP_DIR}"
             }
         }
 
@@ -40,11 +31,10 @@ pipeline {
                 echo '🧪 Ejecutando pruebas dentro del contenedor...'
                 sh """
                     docker run --rm \
-                    # Referenciamos con env.APP_DIR
+                    # Usamos ${env.APP_DIR} y ${env.IMAGE_TAG}
                     -v ${WORKSPACE}/${env.APP_DIR}:/app \
                     -w /app \
-                    # Usamos la variable local de Groovy para el TAG
-                    ${IMAGE_TAG_VAR} \
+                    ${env.IMAGE_TAG} \
                     /bin/bash -c "pytest --cov=. --cov-report=xml:coverage.xml --junitxml=results.xml"
                 """
             }
@@ -53,22 +43,23 @@ pipeline {
         stage('Upload Coverage') {
             steps {
                 echo '📈 Subiendo cobertura a Codecov...'
-                // Referenciamos con env.APP_DIR
+                // Usamos ${env.CODECOV_TOKEN} y ${env.APP_DIR}
                 sh "codecov -t ${env.CODECOV_TOKEN} -f ${env.APP_DIR}/coverage.xml"
             }
         }
     }
 
+    // El bloque post es donde tuvimos el problema de visibilidad.
     post {
         always {
-            script { // Aseguramos el contexto de Groovy
+            script { // Usamos script para asegurar que Groovy procese la sintaxis
                 echo '📄 Archivando resultados de tests...'
-                // ¡AQUÍ ESTÁ LA CLAVE! Usamos env.APP_DIR para asegurar la visibilidad.
+                // Usamos ${env.APP_DIR} de forma segura.
                 junit "${env.APP_DIR}/results.xml" 
 
                 echo '🧹 Limpiando imagen de Docker...'
-                // Usamos la variable local de Groovy que definimos al inicio.
-                sh "docker rmi ${IMAGE_TAG_VAR} || true" 
+                // Usamos ${env.IMAGE_TAG} de forma segura.
+                sh "docker rmi ${env.IMAGE_TAG} || true" 
             }
         }
         success {
