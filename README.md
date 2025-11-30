@@ -1,5 +1,7 @@
 # 📇 Agenda de Contactos
 
+[![codecov](https://codecov.io/gh/jordan-Florez/Agenda-Contactos/graph/badge.svg?token=P92H2W44UO)](https://codecov.io/gh/jordan-Florez/Agenda-Contactos)
+
 [![Jenkins](https://img.shields.io/badge/Jenkins-Passing-brightgreen.svg?logo=jenkins)](http://localhost:8080/job/Agendas-Contactos-Pipeline/)
 
 Una aplicación web moderna para gestionar contactos con backend en **FastAPI** y frontend en **HTML/CSS/JavaScript**, desplegada con **Docker** y CI/CD con **Jenkins**.
