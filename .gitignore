@@ -6,7 +6,6 @@ backend/venv/
 
 # Ignorar archivos de caché de Python
 .coverage
-coverage.xml
 .pytest_cache/
 __pycache__/
 *.pyc
@@ -22,4 +21,8 @@ Thumbs.db
 # Ignorar archivos de configuración de editor
 .vscode/
 
+# Ignorar resultados de tests
 backend/results.xml
+
+# Ignorar archivos temporales de Docker
+*.log
